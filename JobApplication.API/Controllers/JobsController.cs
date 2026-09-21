@@ -1,5 +1,10 @@
 ﻿using Application.DTOs.Jobs;
-using Application.Interfaces.Services;
+using Application.Features.Jobs.Commands.CloseJobCommand;
+using Application.Features.Jobs.Commands.CreateJobCommand;
+using Application.Features.Jobs.Commands.UpdateJobCommand;
+using Application.Features.Jobs.Queries.GetAllJobsQuery;
+using Application.Features.Jobs.Queries.GetJobByIdQuery;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,40 +12,33 @@ namespace JobApplication.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class JobsController(IServiceManager serviceManager) : ControllerBase
+    public class JobsController(IMediator mediator) : ControllerBase
     {
         [HttpPost]
         [Authorize(Roles = "Recruiter")]
         public async Task<ActionResult<JobDto>> CreateJob(CreateJobDto createJobDto)
-        {
-            var recruiterId = serviceManager.CurrentUserService.RecruiterId;
-            return Ok(await serviceManager.JobService.CreateJobAsync(createJobDto, recruiterId));
-        }
+            => Ok(await mediator.Send(new CreateJobCommand(createJobDto.Title, createJobDto.Description)));
 
         [HttpGet]
         [Authorize]
         public async Task<ActionResult<IEnumerable<JobDto>>> GetAllJobs()
-            => Ok(await serviceManager.JobService.GetAllJobsAsync());
+            => Ok(await mediator.Send(new GetAllJobsQuery()));
 
         [HttpGet("{id:int}")]
         [Authorize]
         public async Task<ActionResult<JobDto>> GetJobById(int id)
-            => Ok(await serviceManager.JobService.GetJobByIdAsync(id));
+            => Ok(await mediator.Send(new GetJobByIdQuery(id)));
         
         [HttpPatch("{id:int}")]
         [Authorize(Roles = "Recruiter")]
         public async Task<ActionResult<JobDto>> UpdateJob(int id, UpdateJobDto updateJobDto)
-        {
-            var recruiterId = serviceManager.CurrentUserService.RecruiterId;
-            return Ok(await serviceManager.JobService.UpdateJobAsync(id, updateJobDto, recruiterId));
-        }
+            => Ok(await mediator.Send(new UpdateJobCommand(id, updateJobDto.Title, updateJobDto.Description)));
 
         [HttpDelete("{id:int}")]
         [Authorize(Roles = "Recruiter")]
         public async Task<IActionResult> CloseJob(int id)
         {
-            var recruiterId = serviceManager.CurrentUserService.RecruiterId;
-            await serviceManager.JobService.CloseJobAsync(id, recruiterId);
+            await mediator.Send(new CloseJobCommand(id));
             return NoContent();
         }
     }
