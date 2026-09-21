@@ -1,10 +1,10 @@
 using Application.Interfaces;
 using Application.Interfaces.Repositories;
 using Application.Interfaces.Services;
-using Application.Services;
 using Infrastructure.Identity;
 using Infrastructure.Persistence;
 using Infrastructure.Repositories;
+using JobApplication.API.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -31,12 +31,13 @@ namespace JobApplication.API
             builder.Services.AddScoped<IJobRepository, JobRepository>();
             builder.Services.AddScoped<IJobApplicationRepository, JobApplicationRepository>();
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-            builder.Services.AddScoped<IJobService, JobService>();
-            builder.Services.AddScoped<IJobApplicationService, JobApplicationService>();
+            //builder.Services.AddScoped<IJobService, JobService>();
+            //builder.Services.AddScoped<IJobApplicationService, JobApplicationService>();
             builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
             builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
-            builder.Services.AddScoped<IServiceManager, ServiceManager>();
+            //builder.Services.AddScoped<IServiceManager, ServiceManager>();
             builder.Services.AddAutoMapper(config => { config.AddMaps(typeof(Application.AssemblyReference).Assembly); });
+            
 
             builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
             {
@@ -68,6 +69,9 @@ namespace JobApplication.API
             });
             builder.Services.AddAuthorization();
 
+            builder.Services.AddMediatR(cfg =>
+                cfg.RegisterServicesFromAssembly(typeof(Application.AssemblyReference).Assembly));
+
             builder.Services.AddOpenApi(options =>
             {
                 options.AddDocumentTransformer((document, context, cancellationToken) =>
@@ -87,12 +91,12 @@ namespace JobApplication.API
                             In = Microsoft.OpenApi.Models.ParameterLocation.Header,
                             Name = "Authorization"
                         };
-
                     return Task.CompletedTask;
                 });
             });
 
             var app = builder.Build();
+            app.UseMiddleware<ExceptionMiddleware>();
 
             using (var scope = app.Services.CreateScope())
             {

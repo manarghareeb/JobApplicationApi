@@ -1,7 +1,6 @@
 ﻿using Application.Interfaces.Services;
 using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace Infrastructure.Identity
