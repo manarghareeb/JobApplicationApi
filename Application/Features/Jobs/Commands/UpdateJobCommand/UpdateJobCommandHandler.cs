@@ -5,11 +5,12 @@ using Application.Interfaces.Services;
 using AutoMapper;
 using Domain.Entities;
 using MediatR;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Application.Features.Jobs.Commands.UpdateJobCommand
 {
-    internal class UpdateJobCommandHandler(IUnitOfWork _unitOfWork, IMapper _mapper, 
-        ICurrentUserService _currentUserService) : IRequestHandler<UpdateJobCommand, JobDto>
+    internal class UpdateJobCommandHandler(IUnitOfWork _unitOfWork, IMapper _mapper, ICurrentUserService _currentUserService,
+        IBackgroundJobScheduler _backgroundJobScheduler) : IRequestHandler<UpdateJobCommand, JobDto>
     {
         public async Task<JobDto> Handle(UpdateJobCommand request, CancellationToken cancellationToken)
         {
@@ -26,8 +27,11 @@ namespace Application.Features.Jobs.Commands.UpdateJobCommand
                 job.Title = request.Title;
             if (request.Description is not null)
                 job.Description = request.Description;
+            if (request.CloseAt is not null)
+                job.CloseAt = request.CloseAt;
             _unitOfWork.GetRepository<Job>().Update(job);
             await _unitOfWork.SaveChangesAsync();
+            _backgroundJobScheduler.Schedule<INotificationService>(s => s.NotifyRecruiter(job.Id), TimeSpan.FromMinutes(1));
             return _mapper.Map<JobDto>(job);
         }
     }

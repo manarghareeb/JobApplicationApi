@@ -9,8 +9,8 @@ using MediatR;
 
 namespace Application.Features.JobApplications.Commands.ApplyJobApplicationCommand
 {
-    internal class ApplyJobApplicationCommandHandler(IUnitOfWork _unitOfWork, IMapper _mapper, ICurrentUserService _currentUserService) 
-        : IRequestHandler<ApplyJobApplicationCommand, JobApplicationDto>
+    internal class ApplyJobApplicationCommandHandler(IUnitOfWork _unitOfWork, IMapper _mapper, ICurrentUserService _currentUserService
+        , IBackgroundJobScheduler _backgroundJobScheduler) : IRequestHandler<ApplyJobApplicationCommand, JobApplicationDto>
     {
         public async Task<JobApplicationDto> Handle(ApplyJobApplicationCommand request, CancellationToken cancellationToken)
         {
@@ -35,6 +35,7 @@ namespace Application.Features.JobApplications.Commands.ApplyJobApplicationComma
             };
             await _unitOfWork.GetRepository<JobApplication>().AddAsync(jobApplication);
             await _unitOfWork.SaveChangesAsync();
+            _backgroundJobScheduler.Enqueue<INotificationService>(b => b.NotifyRecruiter(jobApplication.Id));
             return _mapper.Map<JobApplicationDto>(jobApplication);
         }
     }

@@ -9,8 +9,8 @@ using MediatR;
 
 namespace Application.Features.JobApplications.Commands.UpdateApplicationStatusCommand
 {
-    internal class UpdateApplicationStatusCommandHandler(IUnitOfWork _unitOfWork, IMapper _mapper, 
-        ICurrentUserService _currentUserService) : IRequestHandler<UpdateApplicationStatusCommand, JobApplicationDto>
+    internal class UpdateApplicationStatusCommandHandler(IUnitOfWork _unitOfWork, IMapper _mapper, ICurrentUserService _currentUserService
+        , IBackgroundJobScheduler _backgroundJobScheduler) : IRequestHandler<UpdateApplicationStatusCommand, JobApplicationDto>
     {
         public async Task<JobApplicationDto> Handle(UpdateApplicationStatusCommand request, CancellationToken cancellationToken)
         {
@@ -26,6 +26,7 @@ namespace Application.Features.JobApplications.Commands.UpdateApplicationStatusC
             application.StatusUpdatedAt = DateTime.UtcNow;
             _unitOfWork.GetRepository<JobApplication>().Update(application);
             await _unitOfWork.SaveChangesAsync();
+            _backgroundJobScheduler.Schedule<INotificationService>(s => s.NotifyRecruiter(application.Id), TimeSpan.FromMinutes(1));
             return _mapper.Map<JobApplicationDto>(application);
         }
         private void ValidateStatusTransition(JobApplicationStatus currentStatus, JobApplicationStatus newStatus)

@@ -1,9 +1,12 @@
 using Application.Interfaces;
 using Application.Interfaces.Repositories;
 using Application.Interfaces.Services;
+using Application.Services;
+using Hangfire;
 using Infrastructure.Identity;
 using Infrastructure.Persistence;
 using Infrastructure.Repositories;
+using Infrastructure.Services;
 using JobApplication.API.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -31,11 +34,11 @@ namespace JobApplication.API
             builder.Services.AddScoped<IJobRepository, JobRepository>();
             builder.Services.AddScoped<IJobApplicationRepository, JobApplicationRepository>();
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-            //builder.Services.AddScoped<IJobService, JobService>();
-            //builder.Services.AddScoped<IJobApplicationService, JobApplicationService>();
             builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
             builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
-            //builder.Services.AddScoped<IServiceManager, ServiceManager>();
+            builder.Services.AddScoped<IBackgroundJobScheduler, HangfireBackgroundJobScheduler>();
+            builder.Services.AddScoped<INotificationService, EmailNotificationService>();
+            builder.Services.AddScoped<IJobMaintenanceService, JobMaintenanceService>();
             builder.Services.AddAutoMapper(config => { config.AddMaps(typeof(Application.AssemblyReference).Assembly); });
             
 
@@ -95,15 +98,27 @@ namespace JobApplication.API
                 });
             });
 
+            builder.Services.AddHangfire(config => config
+            .UseSimpleAssemblyNameTypeSerializer()
+            .UseRecommendedSerializerSettings()
+            .UseSqlServerStorage(builder.Configuration.GetConnectionString("HangfireConnection")));
+
+            builder.Services.AddHangfireServer();
+
             var app = builder.Build();
             app.UseMiddleware<ExceptionMiddleware>();
 
             using (var scope = app.Services.CreateScope())
             {
-                var roleManager =
-                    scope.ServiceProvider
-                        .GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+                var backgroundJobScheduler = scope.ServiceProvider.GetRequiredService<IBackgroundJobScheduler>();
 
+                backgroundJobScheduler.AddOrUpdate<IJobMaintenanceService>("auto-close-expired-jobs",
+                    service => service.CloseExpiredJobsAsync(), Cron.Minutely());
+            }
+
+            using (var scope = app.Services.CreateScope())
+            {
+                var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
                 await IdentitySeeder.SeedRolesAsync(roleManager);
             }
 
@@ -118,6 +133,8 @@ namespace JobApplication.API
 
             app.UseAuthentication();
             app.UseAuthorization();
+
+            app.UseHangfireDashboard("/hangfire");
 
             app.MapControllers();
 

@@ -17,7 +17,7 @@ namespace JobApplication.API.Controllers
         [HttpPost]
         [Authorize(Roles = "Recruiter")]
         public async Task<ActionResult<JobDto>> CreateJob(CreateJobDto createJobDto)
-            => Ok(await mediator.Send(new CreateJobCommand(createJobDto.Title, createJobDto.Description)));
+            => Ok(await mediator.Send(new CreateJobCommand(createJobDto.Title, createJobDto.Description, createJobDto.CloseAt)));
 
         [HttpGet]
         [Authorize]
@@ -32,7 +32,7 @@ namespace JobApplication.API.Controllers
         [HttpPatch("{id:int}")]
         [Authorize(Roles = "Recruiter")]
         public async Task<ActionResult<JobDto>> UpdateJob(int id, UpdateJobDto updateJobDto)
-            => Ok(await mediator.Send(new UpdateJobCommand(id, updateJobDto.Title, updateJobDto.Description)));
+            => Ok(await mediator.Send(new UpdateJobCommand(id, updateJobDto.Title, updateJobDto.Description, updateJobDto.CloseAt)));
 
         [HttpDelete("{id:int}")]
         [Authorize(Roles = "Recruiter")]

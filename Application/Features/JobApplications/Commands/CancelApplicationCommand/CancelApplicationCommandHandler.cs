@@ -6,7 +6,8 @@ using MediatR;
 
 namespace Application.Features.JobApplications.Commands.CancelApplicationCommand
 {
-    internal class CancelApplicationCommandHandler(IUnitOfWork _unitOfWork, ICurrentUserService _currentUserService) : IRequestHandler<CancelApplicationCommand>
+    internal class CancelApplicationCommandHandler(IUnitOfWork _unitOfWork, ICurrentUserService _currentUserService,
+        IBackgroundJobScheduler _backgroundJobScheduler) : IRequestHandler<CancelApplicationCommand>
     {
         public async Task Handle(CancelApplicationCommand request, CancellationToken cancellationToken)
         {
@@ -23,6 +24,7 @@ namespace Application.Features.JobApplications.Commands.CancelApplicationCommand
             application.StatusUpdatedAt = DateTime.UtcNow;
             _unitOfWork.GetRepository<Domain.Entities.JobApplication>().Update(application);
             await _unitOfWork.SaveChangesAsync();
+            _backgroundJobScheduler.Enqueue<INotificationService>(x => x.NotifyCandidate(application.Id));
         }
     }
 }

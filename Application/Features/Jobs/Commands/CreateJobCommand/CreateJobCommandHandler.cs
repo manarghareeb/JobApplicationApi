@@ -7,8 +7,8 @@ using MediatR;
 
 namespace Application.Features.Jobs.Commands.CreateJobCommand
 {
-    internal class CreateJobCommandHandler(IUnitOfWork _unitOfWork, IMapper _mapper
-        , ICurrentUserService _currentUserService) : IRequestHandler<CreateJobCommand, JobDto>
+    internal class CreateJobCommandHandler(IUnitOfWork _unitOfWork, IMapper _mapper, ICurrentUserService _currentUserService,
+        IBackgroundJobScheduler _backgroundJobScheduler) : IRequestHandler<CreateJobCommand, JobDto>
     {
         public async Task<JobDto> Handle(CreateJobCommand request, CancellationToken cancellationToken)
         {
@@ -18,10 +18,12 @@ namespace Application.Features.Jobs.Commands.CreateJobCommand
                 Description = request.Description,
                 RecruiterId = _currentUserService.RecruiterId,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                CloseAt = request.CloseAt
             };
             await _unitOfWork.GetRepository<Job>().AddAsync(job);
             await _unitOfWork.SaveChangesAsync();
+            _backgroundJobScheduler.Enqueue<INotificationService>(b => b.NotifyRecruiter(job.Id));
             return _mapper.Map<JobDto>(job);
         }
     }
