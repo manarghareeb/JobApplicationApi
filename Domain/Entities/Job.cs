@@ -8,6 +8,7 @@
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? ClosedAt { get; set; }
+        public DateTime? CloseAt { get; set; }
         public Recruiter Recruiter { get; set; }
         public int RecruiterId { get; set; }
         public ICollection<JobApplication> Applications { get; set; } = new List<JobApplication>();

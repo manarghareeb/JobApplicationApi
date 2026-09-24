@@ -3,11 +3,12 @@ using Application.Interfaces;
 using Application.Interfaces.Services;
 using Domain.Entities;
 using MediatR;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Application.Features.Jobs.Commands.CloseJobCommand
 {
-    internal class CloseJobCommandHandler(IUnitOfWork _unitOfWork, ICurrentUserService _currentUserService) 
-        : IRequestHandler<CloseJobCommand>
+    internal class CloseJobCommandHandler(IUnitOfWork _unitOfWork, ICurrentUserService _currentUserService, 
+        IBackgroundJobScheduler _backgroundJobScheduler) : IRequestHandler<CloseJobCommand>
     {
         public async Task Handle(CloseJobCommand request, CancellationToken cancellationToken)
         {
@@ -23,6 +24,7 @@ namespace Application.Features.Jobs.Commands.CloseJobCommand
             job.ClosedAt = DateTime.UtcNow;
             _unitOfWork.GetRepository<Job>().Update(job);
             await _unitOfWork.SaveChangesAsync();
+            _backgroundJobScheduler.Enqueue<INotificationService>(x => x.NotifyRecruiter(job.Id));
         }
     }
 }
